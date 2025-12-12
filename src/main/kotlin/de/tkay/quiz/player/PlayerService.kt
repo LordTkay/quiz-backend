@@ -10,17 +10,23 @@ class PlayerService {
     private val players = ConcurrentHashMap<String, Player>()
 
     fun isTaken(username: String): Boolean {
-        return players.keys.any { it.equals(username, ignoreCase = true) }
+        val normalizedUsername = username.lowercase()
+
+        return players.containsKey(normalizedUsername)
     }
 
     fun add(username: String, session: WebSocketSession): Player {
+        val normalizedUsername = username.lowercase()
+
         val player = Player(username, session)
-        players[username] = player
+        players[normalizedUsername] = player
         return player
     }
 
     fun remove(username: String) {
-        players.remove(username)
+        val normalizedUsername = username.lowercase()
+
+        players.remove(normalizedUsername)
     }
 
 }

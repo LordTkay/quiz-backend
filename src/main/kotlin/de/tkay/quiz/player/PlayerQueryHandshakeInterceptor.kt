@@ -19,7 +19,7 @@ class PlayerQueryHandshakeInterceptor : HandshakeInterceptor {
         val servletRequest = (request as ServletServerHttpRequest).servletRequest
         val username = servletRequest.getParameter("username")
 
-        if (username.isEmpty()) {
+        if (username.isNullOrEmpty()) {
             logger.warn("Connection attempt was aborted because no username was provided!")
             return false
         }
