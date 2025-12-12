@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebSocket Login</title>
+    <style>
+        :root { color-scheme: light dark; }
+        body { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; }
+        fieldset { border: 1px solid #888; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
+        legend { font-weight: 600; }
+        label { display: block; margin-top: 8px; font-size: 0.95rem; }
+        input, select, button { font: inherit; padding: 8px; margin-top: 4px; }
+        .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
+        .row > div { min-width: 220px; }
+        #status { padding: 8px 10px; border-radius: 6px; font-weight: 600; }
+        #status.disconnected { background: #fee; color: #a00; border: 1px solid #f99; }
+        #status.connecting { background: #fff7e6; color: #a66300; border: 1px solid #ffd699; }
+        #status.connected { background: #eaffea; color: #056608; border: 1px solid #96e196; }
+        #log { height: 260px; overflow: auto; border: 1px solid #888; border-radius: 6px; padding: 8px; background: rgba(127,127,127,0.08); }
+        .log-line { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; margin: 0; }
+        .log-line.in { color: #0a5; }
+        .log-line.out { color: #06c; }
+        .log-line.sys { color: #888; }
+        .btns { display: flex; gap: 8px; margin-top: 10px; }
+        .grow { flex: 1 1 auto; }
+    </style>
+</head>
+<body>
+<h1>WebSocket Login</h1>
+
+<fieldset>
+    <legend>Verbindung</legend>
+    <div class="row">
+        <div class="grow">
+            <label for="wsUrl">WebSocket URL</label>
+            <!-- Standard-Endpoint aus deiner App-Konfiguration -->
+            <input id="wsUrl" type="text" class="grow" value="ws://localhost:8080/ws/player" />
+        </div>
+        <div>
+            <label for="username">Benutzername</label>
+            <input id="username" type="text" placeholder="z. B. Alice" />
+        </div>
+        <div>
+            <label for="type">Typ</label>
+            <select id="type">
+                <option value="PLAYER">PLAYER</option>
+                <option value="DISPLAY">DISPLAY</option>
+                <option value="GAMEMASTER">GAMEMASTER</option>
+            </select>
+        </div>
+        <div class="btns">
+            <button id="connectBtn">Verbinden</button>
+            <button id="disconnectBtn" disabled>Trennen</button>
+        </div>
+    </div>
+    <div style="margin-top:10px;">
+        Status: <span id="status" class="disconnected">Getrennt</span>
+    </div>
+</fieldset>
+
+<fieldset>
+    <legend>Nachrichten</legend>
+    <div id="log" aria-live="polite" aria-label="Log"></div>
+    <div class="row" style="margin-top:10px;">
+        <div class="grow">
+            <label for="outMsg">Nachricht senden (Text)</label>
+            <input id="outMsg" type="text" placeholder="Text" />
+        </div>
+        <div class="btns">
+            <button id="sendBtn" disabled>Senden</button>
+            <button id="clearBtn">Log leeren</button>
+        </div>
+    </div>
+</fieldset>
+
+<script>
+    (function() {
+        /** @type {WebSocket | null} */
+        let ws = null;
+        const qs = (id) => document.getElementById(id);
+        const wsUrlEl = qs('wsUrl');
+        const usernameEl = qs('username');
+        const typeEl = qs('type');
+        const connectBtn = qs('connectBtn');
+        const disconnectBtn = qs('disconnectBtn');
+        const statusEl = qs('status');
+        const logEl = qs('log');
+        const outMsgEl = qs('outMsg');
+        const sendBtn = qs('sendBtn');
+        const clearBtn = qs('clearBtn');
+
+        function setStatus(state, text) {
+            statusEl.className = '';
+            if (state === 'connected') statusEl.classList.add('connected');
+            else if (state === 'connecting') statusEl.classList.add('connecting');
+            else statusEl.classList.add('disconnected');
+            statusEl.textContent = text;
+        }
+
+        function log(line, kind = 'sys') {
+            const p = document.createElement('div');
+            p.className = 'log-line ' + kind;
+            p.textContent = line;
+            logEl.appendChild(p);
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        function buildUrlWithQuery(baseUrl, username, type) {
+            try {
+                const url = new URL(baseUrl);
+                url.searchParams.set('username', username);
+                url.searchParams.set('type', type);
+                return url.toString();
+            } catch (e) {
+                // Fallback: simple Verkettung
+                const sep = baseUrl.includes('?') ? '&' : '?';
+                return baseUrl + sep + 'username=' + encodeURIComponent(username) + '&type=' + encodeURIComponent(type);
+            }
+        }
+
+        function setUiConnected(connected) {
+            connectBtn.disabled = connected;
+            disconnectBtn.disabled = !connected;
+            sendBtn.disabled = !connected;
+            wsUrlEl.disabled = connected;
+            usernameEl.disabled = connected;
+            typeEl.disabled = connected;
+        }
+
+        function connect() {
+            const baseUrl = wsUrlEl.value.trim();
+            const username = usernameEl.value.trim();
+            const type = typeEl.value;
+
+            if (!baseUrl) { alert('Bitte WebSocket URL angeben.'); return; }
+            if (!username) { alert('Bitte Benutzername angeben.'); return; }
+
+            const fullUrl = buildUrlWithQuery(baseUrl, username, type);
+            log('Verbinde zu ' + fullUrl + ' ...', 'sys');
+            setStatus('connecting', 'Verbinde ...');
+
+            try {
+                ws = new WebSocket(fullUrl);
+            } catch (e) {
+                log('Fehler beim Erstellen der Verbindung: ' + e, 'sys');
+                setStatus('disconnected', 'Getrennt');
+                return;
+            }
+
+            ws.onopen = () => {
+                setStatus('connected', 'Verbunden');
+                setUiConnected(true);
+                log('Verbindung geöffnet.', 'sys');
+            };
+
+            ws.onmessage = (evt) => {
+                const data = evt.data;
+                // Versuche JSON (z. B. {"status":"ERROR|OK","message":"..."}) zu parsen
+                try {
+                    const obj = JSON.parse(data);
+                    const prefix = (obj.status ? '[' + obj.status + '] ' : '');
+                    log(prefix + (obj.message ?? JSON.stringify(obj)), 'in');
+                } catch (_) {
+                    log(String(data), 'in');
+                }
+            };
+
+            ws.onerror = (evt) => {
+                log('WebSocket Fehler: ' + (evt.message || 'unbekannt'), 'sys');
+            };
+
+            ws.onclose = (evt) => {
+                log('Verbindung geschlossen (Code ' + evt.code + ').', 'sys');
+                setStatus('disconnected', 'Getrennt');
+                setUiConnected(false);
+                ws = null;
+            };
+        }
+
+        function disconnect() {
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                log('Trenne Verbindung ...', 'sys');
+                ws.close(1000, 'Client closing');
+            } else if (ws) {
+                // Bereits in CONNECTING/CLOSING/CLOSED
+                ws.close();
+            }
+        }
+
+        function send() {
+            const msg = outMsgEl.value;
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                alert('Nicht verbunden.');
+                return;
+            }
+            try {
+                ws.send(msg);
+                log(msg, 'out');
+                outMsgEl.value = '';
+                outMsgEl.focus();
+            } catch (e) {
+                log('Sende-Fehler: ' + e, 'sys');
+            }
+        }
+
+        connectBtn.addEventListener('click', connect);
+        disconnectBtn.addEventListener('click', disconnect);
+        sendBtn.addEventListener('click', send);
+        clearBtn.addEventListener('click', () => { logEl.innerHTML = ''; });
+        outMsgEl.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') { send(); }
+        });
+
+        // Komfort: Vorbelegung aus URL-Query (z. B. ?url=ws://...&username=Tim&type=PLAYER)
+        try {
+            const cur = new URL(window.location.href);
+            wsUrlEl.value = cur.searchParams.get('url') || wsUrlEl.value;
+            usernameEl.value = cur.searchParams.get('username') || '';
+            const t = cur.searchParams.get('type');
+            if (t) typeEl.value = t;
+        } catch {}
+    })();
+</script>
+</body>
+</html>
