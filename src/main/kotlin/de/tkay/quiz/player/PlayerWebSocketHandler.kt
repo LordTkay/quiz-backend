@@ -51,6 +51,6 @@ class PlayerWebSocketHandler(
             is PlayerIncomingMessage.Buzzing -> applicationEventPublisher.publishEvent(BuzzingEvent(this, player))
         }
 
-        logger.info("Player Event {}: {} ({})", incomingMessage.javaClass.name, player.username, session.id)
+        logger.debug("Player Event {}: {} ({})", incomingMessage.javaClass.name, player.username, session.id)
     }
 }
