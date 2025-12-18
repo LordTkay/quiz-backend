@@ -18,41 +18,37 @@ class BuzzerService(
     private var queue = AtomicReference<List<BuzzEntry>>(listOf())
 
     /**
-     * Handles the event triggered when a player buzzes. This method processes the player's
-     * buzz action by updating the queue, determining their position in the buzz order,
-     * and sending feedback to the player via a WebSocket session.
+     * Handles an incoming buzz event by adding the player to the buzz queue if they haven't already buzzed
+     * and notifies them of their position in the queue. If it's the first buzz, they are informed accordingly.
+     * Additionally, this method publishes a `BuzzQueueChangedEvent` to notify listeners of the updated queue.
      *
-     * @param event The buzz event containing the player who triggered the buzz action.
+     * @param event The `BuzzEvent` triggered when a player buzzes, containing details of the player who buzzed.
      */
     @EventListener
     private fun onBuzz(event: BuzzEvent) {
+        var updated = false;
 
-        var queueSize = -1
-        var firstEntry: BuzzEntry? = null
-
-        queue.getAndUpdate { currentQueue ->
-            if (currentQueue.any { it.player == event.player }) return@getAndUpdate currentQueue
-            val updatedQueue = currentQueue + BuzzEntry(event.player, System.currentTimeMillis())
-            queueSize = updatedQueue.size
-            firstEntry = updatedQueue.firstOrNull()
-            updatedQueue
+        val updatedQueue = queue.updateAndGet { currentQueue ->
+            if (currentQueue.any { it.player == event.player }) return@updateAndGet currentQueue
+            updated = true
+            currentQueue + BuzzEntry(event.player, System.currentTimeMillis())
         }
 
-        when (queueSize) {
-            -1 -> logger.debug("Player {} has already buzzed!", event.player.username)
-            0 -> logger.error("Queue is after a player has buzzed!")
-            else -> {
-                val message = if (queueSize == 1) {
-                    "You buzzed first!"
-                } else {
-                    val delta = System.currentTimeMillis() - firstEntry!!.timestamp
-                    "You are in {$queueSize}th place and were $delta milliseconds late."
-                }
-                logger.info("Player {} buzzed: {}th place", event.player.username, queueSize)
-                event.player.session.sendMessage(TextMessage(message))
-                applicationEventPublisher.publishEvent(BuzzQueueChangedEvent(this, queue.get()))
-            }
+        if (!updated) {
+            logger.debug("Player {} has already buzzed!", event.player.username)
+            return
         }
+
+        val message = if (updatedQueue.size == 1) {
+            "You buzzed first!"
+        } else {
+            val firstEntry = updatedQueue.first()
+            val delta = System.currentTimeMillis() - firstEntry.timestamp
+            "You are in ${updatedQueue.size}th place and were $delta milliseconds late."
+        }
+        logger.info("Player {} buzzed: {}th place", event.player.username, updatedQueue.size)
+        event.player.session.sendMessage(TextMessage(message))
+        applicationEventPublisher.publishEvent(BuzzQueueChangedEvent(this, queue.get()))
     }
 
     @EventListener(ResetBuzzersEvent::class)
