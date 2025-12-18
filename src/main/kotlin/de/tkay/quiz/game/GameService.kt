@@ -7,29 +7,28 @@ import org.slf4j.LoggerFactory
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.TextMessage
+import java.util.concurrent.atomic.AtomicReference
 
 @Service
 class GameService {
     private final val logger = LoggerFactory.getLogger(this.javaClass)
 
-    private var activeBuzzer: Player? = null
+    private var activeBuzzer = AtomicReference<Player?>(null)
 
     @EventListener
     private fun onBuzz(event: BuzzEvent) {
-        if (activeBuzzer != null) {
+        if (activeBuzzer.compareAndSet(null, event.player)) {
+            val player = event.player
+            player.session.sendMessage(TextMessage("Buzzer activated!"))
+            logger.info("Buzzer activated: {}", player.username)
+        } else {
             event.player.session.sendMessage(TextMessage("Another player already buzzed!"))
-            return
         }
-        val player = event.player
-        activeBuzzer = player
-
-        event.player.session.sendMessage(TextMessage("Buzzer activated!"))
-        logger.info("Buzzer activated: {}", player.username)
     }
 
     @EventListener(ResetBuzzersEvent::class)
     private fun onResetBuzzers() {
-        activeBuzzer = null
+        activeBuzzer.set(null)
     }
 
 }
