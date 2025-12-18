@@ -1,12 +1,14 @@
 package de.tkay.quiz.player
 
 import de.tkay.quiz.player.model.Player
+import de.tkay.quiz.websocket.SessionManager
 import org.springframework.stereotype.Service
+import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
 import java.util.concurrent.ConcurrentHashMap
 
 @Service
-class PlayerService {
+class PlayerService : SessionManager {
     private val players = ConcurrentHashMap<String, Player>()
 
     fun isTaken(username: String): Boolean {
@@ -27,6 +29,10 @@ class PlayerService {
         val normalizedUsername = username.lowercase()
 
         players.remove(normalizedUsername)
+    }
+
+    override fun broadcast(message: TextMessage) {
+        players.values.forEach { it.session.sendMessage(message) }
     }
 
 }
