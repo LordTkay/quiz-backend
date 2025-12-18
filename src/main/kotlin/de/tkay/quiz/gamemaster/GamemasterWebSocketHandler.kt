@@ -14,11 +14,13 @@ import org.springframework.web.socket.handler.TextWebSocketHandler
 
 @Component
 class GamemasterWebSocketHandler(
+    private val gamemasterService: GamemasterService,
     private val applicationEventPublisher: ApplicationEventPublisher
 ) : TextWebSocketHandler() {
     private final val logger = LoggerFactory.getLogger(javaClass)
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
+        gamemasterService.add(session)
         logger.info("Gamemaster connected: {}", session.id)
     }
 
@@ -26,6 +28,7 @@ class GamemasterWebSocketHandler(
         session: WebSocketSession,
         status: CloseStatus
     ) {
+        gamemasterService.remove(session)
         logger.info("Gamemaster disconnected: {}", session.id)
     }
 
