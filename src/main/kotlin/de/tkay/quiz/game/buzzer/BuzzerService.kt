@@ -7,6 +7,8 @@ import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import java.util.concurrent.atomic.AtomicReference
+import kotlin.math.log
+import kotlin.time.TimeSource
 
 @Service
 class BuzzerService(
@@ -15,7 +17,7 @@ class BuzzerService(
     private final val logger = LoggerFactory.getLogger(this.javaClass)
 
     private var queue = AtomicReference<List<BuzzEntry>>(listOf())
-
+    private val serviceStart = TimeSource.Monotonic.markNow()
     /**
      * Handles an incoming buzz event by adding the player to the buzz queue if they haven't already buzzed
      * and notifies them of their position in the queue. If it's the first buzz, they are informed accordingly.
@@ -26,18 +28,22 @@ class BuzzerService(
     @EventListener
     private fun onBuzz(event: BuzzEvent) {
         var addedEntry: BuzzEntry? = null
+        val player = event.player
+
         val updatedQueue = queue.updateAndGet { currentQueue ->
-            if (currentQueue.any { it.player == event.player }) return@updateAndGet currentQueue
-            addedEntry = BuzzEntry(event.player, System.currentTimeMillis())
+            if (currentQueue.any { it.player == player }) return@updateAndGet currentQueue
+            addedEntry = BuzzEntry(player, serviceStart.elapsedNow().inWholeMilliseconds)
             currentQueue + addedEntry
         }
 
         if (addedEntry == null) {
-            logger.debug("Player {} has already buzzed!", event.player.username)
+            logger.debug("Player {} has already buzzed!", player.username)
             return
         }
 
         val firstEntry = updatedQueue.first()
+
+        logger.info("Player buzzed: {} ({}) got position {}", player.username, player.session.id, updatedQueue.size)
 
         applicationEventPublisher.publishEvent(
             BuzzPositionEvent(
@@ -53,5 +59,6 @@ class BuzzerService(
     @EventListener(ResetBuzzersEvent::class)
     private fun onResetBuzzers() {
         queue.set(listOf())
+        applicationEventPublisher.publishEvent(BuzzQueueChangedEvent(this, queue.get()))
     }
 }
