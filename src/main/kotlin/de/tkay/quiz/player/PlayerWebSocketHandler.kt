@@ -1,16 +1,22 @@
 package de.tkay.quiz.player
 
+import de.tkay.quiz.player.event.BuzzingEvent
 import de.tkay.quiz.player.model.Player
+import de.tkay.quiz.player.message.PlayerIncomingMessage
+import kotlinx.serialization.json.Json
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Component
 import org.springframework.web.socket.CloseStatus
 import org.springframework.web.socket.WebSocketMessage
 import org.springframework.web.socket.WebSocketSession
 import org.springframework.web.socket.handler.TextWebSocketHandler
+import java.util.*
 
 @Component
 class PlayerWebSocketHandler(
-    val playerService: PlayerService
+    val playerService: PlayerService,
+    val applicationEventPublisher: ApplicationEventPublisher
 ) : TextWebSocketHandler() {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -39,7 +45,14 @@ class PlayerWebSocketHandler(
     }
 
     override fun handleMessage(session: WebSocketSession, message: WebSocketMessage<*>) {
-        val username = session.attributes["username"] as String
-        logger.info("Player message: {} ({}) - {}", username, session.id, message.payload)
+        val player = session.attributes["player"] as Player
+
+        val incomingMessage = Json.decodeFromString<PlayerIncomingMessage>(message.payload.toString())
+        val event: EventObject = when (incomingMessage) {
+            is PlayerIncomingMessage.Buzzing -> BuzzingEvent(this, player)
+        }
+
+        logger.info("Player Event {}: {} ({})", incomingMessage.javaClass.name, player.username, session.id)
+        applicationEventPublisher.publishEvent(event)
     }
 }
