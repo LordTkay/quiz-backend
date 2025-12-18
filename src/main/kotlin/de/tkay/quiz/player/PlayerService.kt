@@ -1,7 +1,11 @@
 package de.tkay.quiz.player
 
+import de.tkay.quiz.game.buzzer.BuzzPositionEvent
+import de.tkay.quiz.game.buzzer.BuzzQueueChangedEvent
+import de.tkay.quiz.player.message.PlayerIncomingMessage
 import de.tkay.quiz.player.model.Player
 import de.tkay.quiz.websocket.SessionManager
+import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.TextMessage
 import org.springframework.web.socket.WebSocketSession
@@ -33,6 +37,17 @@ class PlayerService : SessionManager {
 
     override fun broadcast(message: TextMessage) {
         players.values.forEach { it.session.sendMessage(message) }
+    }
+
+    @EventListener
+    private fun onBuzzQueueChanged(event: BuzzQueueChangedEvent) {
+        if (event.queue.isNotEmpty()) return
+        broadcast(TextMessage("Buzz queue is empty!"))
+    }
+
+    @EventListener
+    private fun onBuzzPosition(event: BuzzPositionEvent) {
+        event.player.session.sendMessage(TextMessage("You placed in ${event.position}th with delay of ${event.delay}ms"))
     }
 
 }
