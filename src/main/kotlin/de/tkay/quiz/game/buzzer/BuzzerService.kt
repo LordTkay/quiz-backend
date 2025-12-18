@@ -50,10 +50,9 @@ class BuzzerService(
                 }
                 logger.info("Player {} buzzed: {}th place", event.player.username, queueSize)
                 event.player.session.sendMessage(TextMessage(message))
+                applicationEventPublisher.publishEvent(BuzzQueueChangedEvent(this, queue.get()))
             }
         }
-
-        applicationEventPublisher.publishEvent(BuzzQueueChangedEvent(this, queue.get()))
     }
 
     @EventListener(ResetBuzzersEvent::class)
