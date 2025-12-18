@@ -17,7 +17,7 @@ class PlayerWebSocketHandler(
     private val playerService: PlayerService,
     private val applicationEventPublisher: ApplicationEventPublisher
 ) : TextWebSocketHandler() {
-    private val logger = LoggerFactory.getLogger(javaClass)
+    private final val logger = LoggerFactory.getLogger(javaClass)
 
     override fun afterConnectionEstablished(session: WebSocketSession) {
         val username = session.attributes["username"] as String
