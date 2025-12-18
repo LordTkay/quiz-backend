@@ -3,224 +3,672 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>WebSocket Login</title>
+    <title>Quiz Buzzer Playground</title>
     <style>
-        :root { color-scheme: light dark; }
-        body { font-family: system-ui, Segoe UI, Roboto, Arial, sans-serif; margin: 20px; }
-        fieldset { border: 1px solid #888; border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; }
-        legend { font-weight: 600; }
-        label { display: block; margin-top: 8px; font-size: 0.95rem; }
-        input, select, button { font: inherit; padding: 8px; margin-top: 4px; }
-        .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: end; }
-        .row > div { min-width: 220px; }
-        #status { padding: 8px 10px; border-radius: 6px; font-weight: 600; }
-        #status.disconnected { background: #fee; color: #a00; border: 1px solid #f99; }
-        #status.connecting { background: #fff7e6; color: #a66300; border: 1px solid #ffd699; }
-        #status.connected { background: #eaffea; color: #056608; border: 1px solid #96e196; }
-        #log { height: 260px; overflow: auto; border: 1px solid #888; border-radius: 6px; padding: 8px; background: rgba(127,127,127,0.08); }
-        .log-line { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.9rem; white-space: pre-wrap; word-break: break-word; margin: 0; }
-        .log-line.in { color: #0a5; }
-        .log-line.out { color: #06c; }
-        .log-line.sys { color: #888; }
-        .btns { display: flex; gap: 8px; margin-top: 10px; }
-        .grow { flex: 1 1 auto; }
+        :root {
+            --bg-color: #f0f2f5;
+            --card-bg: #ffffff;
+            --primary: #007bff;
+            --success: #28a745;
+            --danger: #dc3545;
+            --warning: #ffc107;
+            --screen: #6f42c1;
+            --text: #333;
+            --border: #ddd;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-color: #1a1a1a;
+                --card-bg: #2d2d2d;
+                --text: #e0e0e0;
+                --border: #444;
+            }
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        h1 { margin: 0; font-size: 1.5rem; }
+
+        .config-bar {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .input-group { display: flex; flex-direction: column; gap: 5px; }
+        .input-group label { font-size: 0.8rem; font-weight: bold; }
+        input, button {
+            padding: 8px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            color: var(--text);
+            font-size: 0.9rem;
+        }
+
+        button {
+            cursor: pointer;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .btn-primary { background: var(--primary); color: white; border: none; }
+        .btn-success { background: var(--success); color: white; border: none; }
+        .btn-danger { background: var(--danger); color: white; border: none; }
+        .btn-warning { background: var(--warning); color: #000; border: none; }
+        .btn-screen { background: var(--screen); color: white; border: none; }
+
+        #player-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .player-card, .gm-card, .screen-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 2px solid var(--border);
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            position: relative;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.1s;
+        }
+
+        .gm-card {
+            border-color: var(--primary);
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+
+        .screen-card {
+            border-color: var(--screen);
+            max-width: 600px;
+            margin-bottom: 20px;
+        }
+
+        .queue-display {
+            background: rgba(111, 66, 193, 0.1);
+            border-left: 4px solid var(--screen);
+            padding: 10px;
+            margin-bottom: 10px;
+            min-height: 40px;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .queue-item {
+            display: inline-block;
+            background: var(--screen);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-right: 5px;
+            margin-bottom: 5px;
+            font-weight: bold;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .player-card.active-buzzer {
+            border-color: var(--success);
+            box-shadow: 0 0 10px var(--success);
+            transform: scale(1.02);
+        }
+
+        .player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .player-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            background: #888;
+        }
+        .status-connected { background: var(--success); box-shadow: 0 0 5px var(--success); }
+        .status-connecting { background: var(--warning); }
+        .status-disconnected { background: var(--danger); }
+
+        .log-area {
+            height: 120px;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.05);
+            border-radius: 4px;
+            padding: 5px;
+            font-family: monospace;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column-reverse; /* Newest on top */
+        }
+
+        .log-entry { margin-bottom: 2px; border-bottom: 1px solid rgba(0,0,0,0.05); padding-bottom: 2px; }
+        .log-in { color: var(--success); }
+        .log-out { color: var(--primary); }
+        .log-err { color: var(--danger); }
+        .log-screen { color: var(--screen); }
+
+        .player-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .buzz-btn {
+            grid-column: span 2;
+            padding: 15px;
+            font-size: 1.2rem;
+            text-transform: uppercase;
+        }
+
+        .shortcut-hint {
+            position: absolute;
+            top: -10px;
+            right: 10px;
+            background: var(--primary);
+            color: white;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .global-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
-<h1>WebSocket Login</h1>
 
-<fieldset>
-    <legend>Verbindung</legend>
-    <div class="row">
-        <div class="grow">
-            <label for="wsUrl">WebSocket URL</label>
-            <!-- Standard-Endpoint aus deiner App-Konfiguration -->
-            <input id="wsUrl" type="text" class="grow" value="ws://localhost:8080/ws/player" />
-        </div>
-        <div>
-            <label for="username">Benutzername</label>
-            <input id="username" type="text" placeholder="z. B. Alice" />
-        </div>
-        <div>
-            <label for="type">Typ</label>
-            <select id="type">
-                <option value="PLAYER">PLAYER</option>
-                <option value="DISPLAY">DISPLAY</option>
-                <option value="GAMEMASTER">GAMEMASTER</option>
-            </select>
-        </div>
-        <div class="btns">
-            <button id="connectBtn">Verbinden</button>
-            <button id="disconnectBtn" disabled>Trennen</button>
-        </div>
+<header>
+    <h1>Quiz Buzzer Playground</h1>
+    <div class="global-actions">
+        <button onclick="addPlayer()" class="btn-success">+ Spieler hinzufügen</button>
+        <button onclick="connectAll()" class="btn-primary">Alle verbinden</button>
+        <button onclick="disconnectAll()" class="btn-danger">Alle trennen</button>
+        <button onclick="resetBuzzer()" class="btn-warning">Buzzer-Reset (Global)</button>
+        <button onclick="buzzAll()" class="btn-warning">STURM-BUZZER (Alle)</button>
     </div>
-    <div style="margin-top:10px;">
-        Status: <span id="status" class="disconnected">Getrennt</span>
-    </div>
-</fieldset>
+</header>
 
-<fieldset>
-    <legend>Nachrichten</legend>
-    <div id="log" aria-live="polite" aria-label="Log"></div>
-    <div class="row" style="margin-top:10px;">
-        <div class="grow">
-            <label for="outMsg">Nachricht senden (Text)</label>
-            <input id="outMsg" type="text" placeholder="Text" />
-        </div>
-        <div class="btns">
-            <button id="sendBtn" disabled>Senden</button>
-            <button id="clearBtn">Log leeren</button>
-        </div>
+<div class="config-bar">
+    <div class="input-group" style="flex-grow: 1;">
+        <label for="wsUrl">Player WS URL</label>
+        <input id="wsUrl" type="text" value="ws://localhost:8080/ws/player" placeholder="ws://...">
     </div>
-</fieldset>
+    <div class="input-group" style="flex-grow: 1;">
+        <label for="gmUrl">Gamemaster WS URL</label>
+        <input id="gmUrl" type="text" value="ws://localhost:8080/ws/gamemaster" placeholder="ws://...">
+    </div>
+    <div class="input-group" style="flex-grow: 1;">
+        <label for="screenUrl">Screen WS URL</label>
+        <input id="screenUrl" type="text" value="ws://localhost:8080/ws/screen" placeholder="ws://...">
+    </div>
+    <div class="input-group">
+        <label for="buzzDelay">Sturm-Buzzer Verzögerung (ms)</label>
+        <input id="buzzDelay" type="number" value="10" min="0" style="width: 80px;">
+    </div>
+    <button onclick="clearAllLogs()">Logs leeren</button>
+</div>
+
+<div id="gm-container"></div>
+<div id="screen-container"></div>
+<div id="player-grid"></div>
 
 <script>
-    (function() {
-        /** @type {WebSocket | null} */
-        let ws = null;
-        const qs = (id) => document.getElementById(id);
-        const wsUrlEl = qs('wsUrl');
-        const usernameEl = qs('username');
-        const typeEl = qs('type');
-        const connectBtn = qs('connectBtn');
-        const disconnectBtn = qs('disconnectBtn');
-        const statusEl = qs('status');
-        const logEl = qs('log');
-        const outMsgEl = qs('outMsg');
-        const sendBtn = qs('sendBtn');
-        const clearBtn = qs('clearBtn');
+    const gmContainer = document.getElementById('gm-container');
+    const playerGrid = document.getElementById('player-grid');
+    const screenContainer = document.getElementById('screen-container');
+    const wsUrlInput = document.getElementById('wsUrl');
+    const gmUrlInput = document.getElementById('gmUrl');
+    const screenUrlInput = document.getElementById('screenUrl');
+    const buzzDelayInput = document.getElementById('buzzDelay');
+    
+    let players = [];
+    let playerCount = 0;
+    let gmInstance = null;
+    let screenInstance = null;
 
-        function setStatus(state, text) {
-            statusEl.className = '';
-            if (state === 'connected') statusEl.classList.add('connected');
-            else if (state === 'connecting') statusEl.classList.add('connecting');
-            else statusEl.classList.add('disconnected');
-            statusEl.textContent = text;
+    class GamemasterInstance {
+        constructor() {
+            this.ws = null;
+            this.connected = false;
+            this.createEl();
+            this.updateUi();
         }
 
-        function log(line, kind = 'sys') {
-            const p = document.createElement('div');
-            p.className = 'log-line ' + kind;
-            p.textContent = line;
-            logEl.appendChild(p);
-            logEl.scrollTop = logEl.scrollHeight;
+        createEl() {
+            this.el = document.createElement('div');
+            this.el.className = 'gm-card';
+            this.el.innerHTML = `
+                <div class="player-header">
+                    <strong style="color: var(--primary)">Gamemaster</strong>
+                    <span class="player-status" id="gm-status"></span>
+                </div>
+                <div class="player-actions">
+                    <button class="btn-primary" id="gm-connBtn" onclick="gmInstance.toggleConnect()">GM Verbinden</button>
+                    <button class="btn-warning" id="gm-resetBtn" onclick="gmInstance.resetBuzzer()" disabled>Buzzer Reset</button>
+                </div>
+                <div class="log-area" id="gm-log"></div>
+            `;
+            gmContainer.appendChild(this.el);
+            this.logEl = document.getElementById('gm-log');
+            this.statusEl = document.getElementById('gm-status');
+            this.connBtn = document.getElementById('gm-connBtn');
+            this.resetBtn = document.getElementById('gm-resetBtn');
         }
 
-        function buildUrlWithQuery(baseUrl, username, type) {
-            try {
-                const url = new URL(baseUrl);
-                url.searchParams.set('username', username);
-                url.searchParams.set('type', type);
-                return url.toString();
-            } catch (e) {
-                // Fallback: simple Verkettung
-                const sep = baseUrl.includes('?') ? '&' : '?';
-                return baseUrl + sep + 'username=' + encodeURIComponent(username) + '&type=' + encodeURIComponent(type);
+        log(msg, type = 'sys') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+            entry.textContent = `[${time}] ${msg}`;
+            this.logEl.prepend(entry);
+        }
+
+        updateUi() {
+            this.statusEl.className = 'player-status ' + (this.ws ? (this.connected ? 'status-connected' : 'status-connecting') : 'status-disconnected');
+            this.connBtn.textContent = this.ws ? 'GM Trennen' : 'GM Verbinden';
+            this.connBtn.className = this.ws ? 'btn-danger' : 'btn-primary';
+            this.resetBtn.disabled = !this.connected;
+        }
+
+        toggleConnect() {
+            if (this.ws) {
+                this.disconnect();
+            } else {
+                this.connect();
             }
         }
 
-        function setUiConnected(connected) {
-            connectBtn.disabled = connected;
-            disconnectBtn.disabled = !connected;
-            sendBtn.disabled = !connected;
-            wsUrlEl.disabled = connected;
-            usernameEl.disabled = connected;
-            typeEl.disabled = connected;
-        }
+        connect() {
+            const url = gmUrlInput.value.trim();
+            this.log(`GM verbindet zu ${url}...`);
+            this.ws = new WebSocket(url);
+            this.updateUi();
 
-        function connect() {
-            const baseUrl = wsUrlEl.value.trim();
-            const username = usernameEl.value.trim();
-            const type = typeEl.value;
-
-            if (!baseUrl) { alert('Bitte WebSocket URL angeben.'); return; }
-            if (!username) { alert('Bitte Benutzername angeben.'); return; }
-
-            const fullUrl = buildUrlWithQuery(baseUrl, username, type);
-            log('Verbinde zu ' + fullUrl + ' ...', 'sys');
-            setStatus('connecting', 'Verbinde ...');
-
-            try {
-                ws = new WebSocket(fullUrl);
-            } catch (e) {
-                log('Fehler beim Erstellen der Verbindung: ' + e, 'sys');
-                setStatus('disconnected', 'Getrennt');
-                return;
-            }
-
-            ws.onopen = () => {
-                setStatus('connected', 'Verbunden');
-                setUiConnected(true);
-                log('Verbindung geöffnet.', 'sys');
+            this.ws.onopen = () => {
+                this.connected = true;
+                this.log('GM Verbunden', 'sys');
+                this.updateUi();
             };
 
-            ws.onmessage = (evt) => {
-                const data = evt.data;
-                // Versuche JSON (z. B. {"status":"ERROR|OK","message":"..."}) zu parsen
-                try {
-                    const obj = JSON.parse(data);
-                    const prefix = (obj.status ? '[' + obj.status + '] ' : '');
-                    log(prefix + (obj.message ?? JSON.stringify(obj)), 'in');
-                } catch (_) {
-                    log(String(data), 'in');
+            this.ws.onmessage = (evt) => {
+                this.log(`Empfangen: ${evt.data}`, 'in');
+            };
+
+            this.ws.onerror = (err) => {
+                this.log('GM Fehler', 'err');
+            };
+
+            this.ws.onclose = () => {
+                this.log('GM Getrennt', 'sys');
+                this.ws = null;
+                this.connected = false;
+                this.updateUi();
+            };
+        }
+
+        disconnect() {
+            if (this.ws) this.ws.close();
+        }
+
+        resetBuzzer() {
+            if (!this.connected) return;
+            const msg = JSON.stringify({ type: 'RESET_BUZZERS' });
+            this.ws.send(msg);
+            this.log(`Gesendet: ${msg}`, 'out');
+            
+            // Lokaler Reset für visuelles Feedback
+            players.forEach(p => {
+                p.isBuzzed = false;
+                p.updateUi();
+            });
+        }
+    }
+
+    class ScreenInstance {
+        constructor() {
+            this.ws = null;
+            this.connected = false;
+            this.createEl();
+            this.updateUi();
+        }
+
+        createEl() {
+            this.el = document.createElement('div');
+            this.el.className = 'screen-card';
+            this.el.innerHTML = `
+                <div class="player-header">
+                    <strong style="color: var(--screen)">Screen</strong>
+                    <span class="player-status" id="screen-status"></span>
+                </div>
+                <div id="screen-queue" class="queue-display">
+                    <em>Keine Spieler in der Queue</em>
+                </div>
+                <div class="player-actions">
+                    <button class="btn-screen" id="screen-connBtn" onclick="screenInstance.toggleConnect()">Screen Verbinden</button>
+                </div>
+                <div class="log-area" id="screen-log"></div>
+            `;
+            screenContainer.appendChild(this.el);
+            this.logEl = document.getElementById('screen-log');
+            this.queueEl = document.getElementById('screen-queue');
+            this.statusEl = document.getElementById('screen-status');
+            this.connBtn = document.getElementById('screen-connBtn');
+        }
+
+        log(msg, type = 'sys') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+            entry.textContent = `[${time}] ${msg}`;
+            this.logEl.prepend(entry);
+        }
+
+        updateUi() {
+            this.statusEl.className = 'player-status ' + (this.ws ? (this.connected ? 'status-connected' : 'status-connecting') : 'status-disconnected');
+            this.connBtn.textContent = this.ws ? 'Screen Trennen' : 'Screen Verbinden';
+            this.connBtn.className = this.ws ? 'btn-danger' : 'btn-screen';
+        }
+
+        updateQueue(queueStr) {
+            if (!queueStr) {
+                this.queueEl.innerHTML = '<em>Keine Spieler in der Queue</em>';
+                return;
+            }
+            const names = queueStr.split(',').filter(s => s.trim().length > 0);
+            if (names.length === 0) {
+                this.queueEl.innerHTML = '<em>Keine Spieler in der Queue</em>';
+                return;
+            }
+            this.queueEl.innerHTML = names.map((p, i) => `<span class="queue-item">${i+1}. ${p.trim()}</span>`).join('');
+        }
+
+        toggleConnect() {
+            if (this.ws) {
+                this.disconnect();
+            } else {
+                this.connect();
+            }
+        }
+
+        connect() {
+            const url = screenUrlInput.value.trim();
+            this.log(`Screen verbindet zu ${url}...`);
+            this.ws = new WebSocket(url);
+            this.updateUi();
+
+            this.ws.onopen = () => {
+                this.connected = true;
+                this.log('Screen Verbunden', 'sys');
+                this.updateUi();
+            };
+
+            this.ws.onmessage = (evt) => {
+                this.log(`Empfangen: ${evt.data}`, 'in');
+                if (evt.data.startsWith('Buzz queue changed:')) {
+                    this.updateQueue(evt.data.replace('Buzz queue changed:', '').trim());
                 }
             };
 
-            ws.onerror = (evt) => {
-                log('WebSocket Fehler: ' + (evt.message || 'unbekannt'), 'sys');
+            this.ws.onerror = (err) => {
+                this.log('Screen Fehler', 'err');
             };
 
-            ws.onclose = (evt) => {
-                log('Verbindung geschlossen (Code ' + evt.code + ').', 'sys');
-                setStatus('disconnected', 'Getrennt');
-                setUiConnected(false);
-                ws = null;
+            this.ws.onclose = () => {
+                this.log('Screen Getrennt', 'sys');
+                this.ws = null;
+                this.connected = false;
+                this.updateUi();
+                this.updateQueue('');
             };
         }
 
-        function disconnect() {
-            if (ws && ws.readyState === WebSocket.OPEN) {
-                log('Trenne Verbindung ...', 'sys');
-                ws.close(1000, 'Client closing');
-            } else if (ws) {
-                // Bereits in CONNECTING/CLOSING/CLOSED
-                ws.close();
+        disconnect() {
+            if (this.ws) this.ws.close();
+        }
+    }
+
+    class PlayerInstance {
+        constructor(name) {
+            this.id = ++playerCount;
+            this.name = name || `Spieler ${this.id}`;
+            this.ws = null;
+            this.connected = false;
+            this.isBuzzed = false;
+            
+            this.createEl();
+            this.updateUi();
+        }
+
+        createEl() {
+            this.el = document.createElement('div');
+            this.el.className = 'player-card';
+            this.el.innerHTML = `
+                ${this.id <= 9 ? `<div class="shortcut-hint">Taste ${this.id}</div>` : ''}
+                <div class="player-header">
+                    <input type="text" value="${this.name}" onchange="players[${this.id-1}].name = this.value" style="font-weight: bold; border:none; background:transparent; width: 150px;">
+                    <span class="player-status" id="status-${this.id}"></span>
+                </div>
+                <div class="player-actions">
+                    <button class="btn-primary" id="connBtn-${this.id}" onclick="players[${this.id-1}].toggleConnect()">Verbinden</button>
+                    <button class="btn-danger" onclick="players[${this.id-1}].remove()">Löschen</button>
+                    <button class="btn-success buzz-btn" id="buzzBtn-${this.id}" onclick="players[${this.id-1}].buzz()" disabled>BUZZER</button>
+                </div>
+                <div class="log-area" id="log-${this.id}"></div>
+            `;
+            playerGrid.appendChild(this.el);
+            this.logEl = document.getElementById(`log-${this.id}`);
+            this.statusEl = document.getElementById(`status-${this.id}`);
+            this.connBtn = document.getElementById(`connBtn-${this.id}`);
+            this.buzzBtn = document.getElementById(`buzzBtn-${this.id}`);
+        }
+
+        log(msg, type = 'sys') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
+            entry.textContent = `[${time}] ${msg}`;
+            this.logEl.prepend(entry);
+        }
+
+        updateUi() {
+            this.statusEl.className = 'player-status ' + (this.ws ? (this.connected ? 'status-connected' : 'status-connecting') : 'status-disconnected');
+            this.connBtn.textContent = this.ws ? 'Trennen' : 'Verbinden';
+            this.connBtn.className = this.ws ? 'btn-danger' : 'btn-primary';
+            this.buzzBtn.disabled = !this.connected;
+            
+            if (this.isBuzzed) {
+                this.el.classList.add('active-buzzer');
+            } else {
+                this.el.classList.remove('active-buzzer');
             }
         }
 
-        function send() {
-            const msg = outMsgEl.value;
-            if (!ws || ws.readyState !== WebSocket.OPEN) {
-                alert('Nicht verbunden.');
-                return;
-            }
-            try {
-                ws.send(msg);
-                log(msg, 'out');
-                outMsgEl.value = '';
-                outMsgEl.focus();
-            } catch (e) {
-                log('Sende-Fehler: ' + e, 'sys');
+        toggleConnect() {
+            if (this.ws) {
+                this.disconnect();
+            } else {
+                this.connect();
             }
         }
 
-        connectBtn.addEventListener('click', connect);
-        disconnectBtn.addEventListener('click', disconnect);
-        sendBtn.addEventListener('click', send);
-        clearBtn.addEventListener('click', () => { logEl.innerHTML = ''; });
-        outMsgEl.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') { send(); }
-        });
+        connect() {
+            const baseUrl = wsUrlInput.value.trim();
+            const url = new URL(baseUrl);
+            url.searchParams.set('username', this.name);
+            
+            this.log(`Verbinde zu ${url}...`);
+            this.ws = new WebSocket(url.toString());
+            this.updateUi();
 
-        // Komfort: Vorbelegung aus URL-Query (z. B. ?url=ws://...&username=Tim&type=PLAYER)
-        try {
-            const cur = new URL(window.location.href);
-            wsUrlEl.value = cur.searchParams.get('url') || wsUrlEl.value;
-            usernameEl.value = cur.searchParams.get('username') || '';
-            const t = cur.searchParams.get('type');
-            if (t) typeEl.value = t;
-        } catch {}
-    })();
+            this.ws.onopen = () => {
+                this.connected = true;
+                this.log('Verbunden', 'sys');
+                this.updateUi();
+            };
+
+            this.ws.onmessage = (evt) => {
+                this.log(`${evt.data}`, 'in');
+                if (evt.data.includes('You placed in')) {
+                    this.isBuzzed = true;
+                    this.updateUi();
+                }
+                if (evt.data.includes('Buzz queue is empty!')) {
+                    this.isBuzzed = false;
+                    this.updateUi();
+                }
+            };
+
+            this.ws.onerror = (err) => {
+                this.log('Fehler', 'err');
+            };
+
+            this.ws.onclose = () => {
+                this.log('Getrennt', 'sys');
+                this.ws = null;
+                this.connected = false;
+                this.updateUi();
+            };
+        }
+
+        disconnect() {
+            if (this.ws) this.ws.close();
+        }
+
+        buzz() {
+            if (!this.connected) return;
+            const msg = JSON.stringify({ type: 'BUZZ' });
+            this.ws.send(msg);
+            this.log(msg, 'out');
+        }
+
+        remove() {
+            this.disconnect();
+            this.el.remove();
+            // We don't remove from array to keep IDs stable for shortcuts, 
+            // but we mark as inactive
+            this.inactive = true;
+        }
+    }
+
+    function addPlayer(name) {
+        players.push(new PlayerInstance(name));
+    }
+
+    function connectAll() {
+        players.forEach(p => { if (!p.inactive && !p.ws) p.connect(); });
+    }
+
+    function disconnectAll() {
+        players.forEach(p => { if (!p.inactive && p.ws) p.disconnect(); });
+    }
+
+    function resetBuzzer() {
+        if (gmInstance && gmInstance.connected) {
+            gmInstance.resetBuzzer();
+            return;
+        }
+
+        const url = gmUrlInput.value.trim();
+        const ws = new WebSocket(url);
+        
+        ws.onopen = () => {
+            const msg = JSON.stringify({ type: 'RESET_BUZZERS' });
+            ws.send(msg);
+            console.log('Gamemaster (one-shot): Reset gesendet');
+            setTimeout(() => ws.close(), 500);
+            
+            // Lokaler Reset für visuelles Feedback
+            players.forEach(p => {
+                p.isBuzzed = false;
+                p.updateUi();
+            });
+        };
+
+        ws.onerror = () => {
+            alert('Fehler: Konnte keine Verbindung zum Gamemaster aufbauen (' + url + ')');
+        };
+    }
+
+    async function buzzAll() {
+        const delay = parseInt(buzzDelayInput.value) || 0;
+        const activePlayers = players.filter(p => !p.inactive && p.connected);
+        for (const p of activePlayers) {
+            p.buzz();
+            if (delay > 0) await new Promise(r => setTimeout(r, delay));
+        }
+    }
+
+    function clearAllLogs() {
+        if (gmInstance && gmInstance.logEl) gmInstance.logEl.innerHTML = '';
+        if (screenInstance && screenInstance.logEl) screenInstance.logEl.innerHTML = '';
+        players.forEach(p => { if (p.logEl) p.logEl.innerHTML = ''; });
+    }
+
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        
+        // G key for GM reset
+        if (e.key.toLowerCase() === 'g') {
+            resetBuzzer();
+        }
+
+        // 1-9 Keys for players
+        if (e.key >= '1' && e.key <= '9') {
+            const idx = parseInt(e.key) - 1;
+            if (players[idx] && !players[idx].inactive) {
+                players[idx].buzz();
+            }
+        }
+        
+        // Space for first connected player
+        if (e.code === 'Space') {
+            e.preventDefault();
+            const first = players.find(p => !p.inactive && p.connected);
+            if (first) first.buzz();
+        }
+    });
+
+    // Initial setup
+    gmInstance = new GamemasterInstance();
+    screenInstance = new ScreenInstance();
+    addPlayer('Alice');
+    addPlayer('Bob');
 </script>
+
 </body>
 </html>
