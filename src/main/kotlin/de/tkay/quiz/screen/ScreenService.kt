@@ -10,18 +10,18 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 @Service
 class ScreenService : SessionManager {
-    private val gamemasterList = CopyOnWriteArrayList<WebSocketSession>()
+    private val screenList = CopyOnWriteArrayList<WebSocketSession>()
 
     fun add(session: WebSocketSession) {
-        gamemasterList.add(session)
+        screenList.add(session)
     }
 
     fun remove(session: WebSocketSession) {
-        gamemasterList.remove(session)
+        screenList.remove(session)
     }
 
     override fun broadcast(message: TextMessage) {
-        gamemasterList.forEach { it.sendMessage(message) }
+        screenList.forEach { it.sendMessage(message) }
     }
 
     @EventListener
