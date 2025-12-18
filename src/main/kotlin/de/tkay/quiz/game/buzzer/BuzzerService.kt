@@ -3,13 +3,16 @@ package de.tkay.quiz.game.buzzer
 import de.tkay.quiz.gamemaster.event.ResetBuzzersEvent
 import de.tkay.quiz.player.event.BuzzEvent
 import org.slf4j.LoggerFactory
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.context.event.EventListener
 import org.springframework.stereotype.Service
 import org.springframework.web.socket.TextMessage
 import java.util.concurrent.atomic.AtomicReference
 
 @Service
-class BuzzerService {
+class BuzzerService(
+    private val applicationEventPublisher: ApplicationEventPublisher
+) {
     private final val logger = LoggerFactory.getLogger(this.javaClass)
 
     private var queue = AtomicReference<List<BuzzEntry>>(listOf())
@@ -49,6 +52,8 @@ class BuzzerService {
                 event.player.session.sendMessage(TextMessage(message))
             }
         }
+
+        applicationEventPublisher.publishEvent(BuzzQueueChangedEvent(this, queue.get()))
     }
 
     @EventListener(ResetBuzzersEvent::class)
