@@ -15,8 +15,8 @@ import java.util.*
 
 @Component
 class PlayerWebSocketHandler(
-    val playerService: PlayerService,
-    val applicationEventPublisher: ApplicationEventPublisher
+    private val playerService: PlayerService,
+    private val applicationEventPublisher: ApplicationEventPublisher
 ) : TextWebSocketHandler() {
     private val logger = LoggerFactory.getLogger(javaClass)
 
