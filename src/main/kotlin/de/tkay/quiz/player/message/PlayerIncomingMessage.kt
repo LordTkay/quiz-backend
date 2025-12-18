@@ -11,7 +11,7 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 sealed class PlayerIncomingMessage {
 
     @Serializable
-    @SerialName("BUZZING")
-    data object Buzzing : PlayerIncomingMessage()
+    @SerialName("BUZZ")
+    data object Buzz : PlayerIncomingMessage()
 
 }

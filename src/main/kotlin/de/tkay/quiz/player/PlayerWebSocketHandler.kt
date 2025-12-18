@@ -1,6 +1,6 @@
 package de.tkay.quiz.player
 
-import de.tkay.quiz.player.event.BuzzingEvent
+import de.tkay.quiz.player.event.BuzzEvent
 import de.tkay.quiz.player.message.PlayerIncomingMessage
 import de.tkay.quiz.player.model.Player
 import kotlinx.serialization.json.Json
@@ -48,7 +48,7 @@ class PlayerWebSocketHandler(
 
         val incomingMessage = Json.decodeFromString<PlayerIncomingMessage>(message.payload.toString())
         when (incomingMessage) {
-            is PlayerIncomingMessage.Buzzing -> applicationEventPublisher.publishEvent(BuzzingEvent(this, player))
+            is PlayerIncomingMessage.Buzz -> applicationEventPublisher.publishEvent(BuzzEvent(this, player))
         }
 
         logger.debug("Player Event {}: {} ({})", incomingMessage.javaClass.name, player.username, session.id)
